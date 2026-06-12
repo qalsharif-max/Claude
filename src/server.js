@@ -119,7 +119,9 @@ const docFields = (body) => ({
   document_number: (body.document_number || '').trim() || null,
   issuing_country: (body.issuing_country || '').trim() || null,
   issue_date: (body.issue_date || '').trim() || null,
+  issue_hijri: (body.issue_hijri || '').trim() || null,
   expiry_date: (body.expiry_date || '').trim(),
+  expiry_hijri: (body.expiry_hijri || '').trim() || null,
   notes: (body.notes || '').trim() || null,
 });
 
@@ -132,8 +134,8 @@ app.post('/api/documents', upload.single('file'), (req, res) => {
   const info = db
     .prepare(
       `INSERT INTO documents
-        (person_id, doc_type, label, document_number, issuing_country, issue_date, expiry_date, notes, file_path, file_name)
-       VALUES (@person_id, @doc_type, @label, @document_number, @issuing_country, @issue_date, @expiry_date, @notes, @file_path, @file_name)`
+        (person_id, doc_type, label, document_number, issuing_country, issue_date, issue_hijri, expiry_date, expiry_hijri, notes, file_path, file_name)
+       VALUES (@person_id, @doc_type, @label, @document_number, @issuing_country, @issue_date, @issue_hijri, @expiry_date, @expiry_hijri, @notes, @file_path, @file_name)`
     )
     .run({
       ...f,
@@ -166,7 +168,8 @@ app.put('/api/documents/:id', upload.single('file'), (req, res) => {
   db.prepare(
     `UPDATE documents SET
        person_id=@person_id, doc_type=@doc_type, label=@label, document_number=@document_number,
-       issuing_country=@issuing_country, issue_date=@issue_date, expiry_date=@expiry_date, notes=@notes,
+       issuing_country=@issuing_country, issue_date=@issue_date, issue_hijri=@issue_hijri,
+       expiry_date=@expiry_date, expiry_hijri=@expiry_hijri, notes=@notes,
        file_path=@file_path, file_name=@file_name,
        updated_at=datetime('now')
        ${renewed ? ', last_reminded_at=NULL, reminder_count=0' : ''}

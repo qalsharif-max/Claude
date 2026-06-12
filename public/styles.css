@@ -127,6 +127,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid #c7d2fe; border-c
 .full { grid-column: 1 / -1; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 
+/* Date field with Gregorian/Hijri toggle */
+.datefield { display: flex; flex-direction: column; gap: 6px; }
+.cal-toggle { display: inline-flex; background: #eef0f7; border-radius: 8px; padding: 2px; width: fit-content; }
+.cal-btn { border: none; background: transparent; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.cal-btn.active { background: #fff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.hijri-input { display: flex; align-items: center; gap: 6px; }
+.hijri-input input { width: 100%; }
+.hijri-input span { color: var(--muted); }
+.conv-note { min-height: 16px; color: var(--primary); }
+
 .banner { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 9px; padding: 10px 12px; font-size: 13px; margin: 6px 0 14px; }
 .banner.warn { background: var(--warn-bg); border-color: #fcd34d; }
 

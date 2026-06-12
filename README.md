@@ -14,6 +14,8 @@ Omar Alsharif (Son), Lama Alsharif (Daughter), Taliah Alsharif (Daughter).
 - 👨‍👩‍👧‍👦 Track multiple documents per person (type, number, country, issue/expiry dates, notes).
 - 📎 Upload a scan or photo (PDF/image) of each document.
 - 🚦 At-a-glance status: **Valid**, **Expiring soon**, **Expired**.
+- 🗓️ **Hijri & Gregorian dates** — enter a Saudi document's Hijri expiry directly
+  (Umm al-Qura) and it's converted to Gregorian automatically; both are shown.
 - 📧 Automatic email reminders via [Resend](https://resend.com): first at 6 months
   out, then monthly until you renew.
 - ♻️ Uploading a new file or changing the expiry date resets the reminder cycle.

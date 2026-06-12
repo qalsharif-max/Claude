@@ -27,7 +27,9 @@ db.exec(`
     document_number TEXT,
     issuing_country TEXT,
     issue_date      TEXT,
+    issue_hijri     TEXT,
     expiry_date     TEXT NOT NULL,
+    expiry_hijri    TEXT,
     file_path       TEXT,
     file_name       TEXT,
     notes           TEXT,
@@ -51,6 +53,14 @@ db.exec(`
     status      TEXT
   );
 `);
+
+// --- Lightweight migrations for databases created before a column existed ---
+const docColumns = db.prepare('PRAGMA table_info(documents)').all().map((c) => c.name);
+for (const col of ['issue_hijri', 'expiry_hijri']) {
+  if (!docColumns.includes(col)) {
+    db.exec(`ALTER TABLE documents ADD COLUMN ${col} TEXT`);
+  }
+}
 
 // --- Seed the family (only on a fresh database) ---
 const FAMILY = [

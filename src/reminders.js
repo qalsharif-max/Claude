@@ -126,7 +126,7 @@ export function buildDigest(due) {
       return `<tr>
         <td style="padding:8px 12px;border-bottom:1px solid #eee">${escapeHtml(doc.person_name)}<br><span style="color:#888;font-size:12px">${escapeHtml(doc.person_role || '')}</span></td>
         <td style="padding:8px 12px;border-bottom:1px solid #eee">${escapeHtml(label)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee">${escapeHtml(doc.expiry_date)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee">${escapeHtml(doc.expiry_date)}${doc.expiry_hijri ? `<br><span style="color:#888;font-size:12px">${escapeHtml(doc.expiry_hijri)} هـ</span>` : ''}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #eee;color:${doc.days_left < 0 ? '#c0392b' : '#b9770e'};font-weight:600">${when}</td>
       </tr>`;
     })
@@ -152,7 +152,8 @@ export function buildDigest(due) {
     due
       .map((doc) => {
         const { label, when } = describe(doc);
-        return `- ${doc.person_name} (${doc.person_role || ''}): ${label} — expiry ${doc.expiry_date} — ${when}`;
+        const exp = doc.expiry_hijri ? `${doc.expiry_date} (${doc.expiry_hijri} هـ)` : doc.expiry_date;
+        return `- ${doc.person_name} (${doc.person_role || ''}): ${label} — expiry ${exp} — ${when}`;
       })
       .join('\n') +
     "\n\nYou'll keep getting a monthly reminder for each one until you upload its replacement in the tracker.";

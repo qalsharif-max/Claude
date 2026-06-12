@@ -116,10 +116,11 @@ function renderStats() {
 
 function cardHtml(d) {
   const label = d.label ? `${esc(d.doc_type)} — ${esc(d.label)}` : esc(d.doc_type);
+  const hijri = d.expiry_hijri || Hijri.gregorianToHijriString(d.expiry_date);
   const sub = [
     d.issuing_country && `🌍 ${esc(d.issuing_country)}`,
     d.document_number && `#${esc(d.document_number)}`,
-    `Expires ${esc(d.expiry_date)}`,
+    `Expires ${esc(d.expiry_date)}${hijri ? ` <span class="muted">(${esc(hijri)} هـ)</span>` : ''}`,
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
   return `
     <div class="doc-card status-${d.status}">
@@ -146,6 +147,75 @@ function statusText(d) {
 // ---- Filters ----
 ['#search', '#filter-status', '#filter-person'].forEach((s) => $(s).addEventListener('input', render));
 
+// ---- Date fields with Gregorian/Hijri toggle ----
+const dateFields = {};
+function makeDateField(container) {
+  container.innerHTML = `
+    <div class="cal-toggle">
+      <button type="button" class="cal-btn active" data-cal="greg">Gregorian</button>
+      <button type="button" class="cal-btn" data-cal="hijri">Hijri هـ</button>
+    </div>
+    <input type="date" class="greg-input" />
+    <div class="hijri-input hidden">
+      <input type="number" class="hy" placeholder="Year (e.g. 1448)" min="1300" max="1700" />
+      <span>/</span>
+      <input type="number" class="hm" placeholder="Mo" min="1" max="12" />
+      <span>/</span>
+      <input type="number" class="hd" placeholder="Day" min="1" max="30" />
+    </div>
+    <div class="conv-note small"></div>`;
+
+  const greg = container.querySelector('.greg-input');
+  const box = container.querySelector('.hijri-input');
+  const hy = container.querySelector('.hy');
+  const hm = container.querySelector('.hm');
+  const hd = container.querySelector('.hd');
+  const note = container.querySelector('.conv-note');
+  let mode = 'greg';
+
+  function refresh() {
+    if (mode === 'hijri') {
+      greg.value = Hijri.hijriToGregorianISO(hy.value, hm.value, hd.value);
+      note.textContent = greg.value ? `→ Gregorian: ${greg.value}` : '';
+    } else {
+      note.textContent = greg.value ? `→ Hijri: ${Hijri.gregorianToHijriString(greg.value)} هـ` : '';
+    }
+  }
+  function setMode(m) {
+    mode = m;
+    container.querySelectorAll('.cal-btn').forEach((b) => b.classList.toggle('active', b.dataset.cal === m));
+    box.classList.toggle('hidden', m !== 'hijri');
+    greg.classList.toggle('hidden', m === 'hijri');
+    refresh();
+  }
+  container.querySelectorAll('.cal-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.cal)));
+  [greg, hy, hm, hd].forEach((el) => el.addEventListener('input', refresh));
+
+  const api = {
+    get value() { return greg.value; },
+    get hijri() {
+      return mode === 'hijri' && hy.value && hm.value && hd.value
+        ? `${hy.value}/${String(hm.value).padStart(2, '0')}/${String(hd.value).padStart(2, '0')}`
+        : '';
+    },
+    reset() { greg.value = ''; hy.value = hm.value = hd.value = ''; note.textContent = ''; setMode('greg'); },
+    set(gregIso, hijriStr) {
+      this.reset();
+      if (hijriStr) {
+        const [y, m, d] = hijriStr.split('/').map(Number);
+        hy.value = y; hm.value = m; hd.value = d;
+        setMode('hijri');
+      } else if (gregIso) {
+        greg.value = gregIso;
+        refresh();
+      }
+    },
+  };
+  dateFields[container.dataset.prefix] = api;
+  return api;
+}
+document.querySelectorAll('.datefield').forEach(makeDateField);
+
 // ---- Document modal ----
 const docModal = $('#doc-modal');
 function openDoc(doc = null) {
@@ -160,9 +230,12 @@ function openDoc(doc = null) {
     $('#doc-label').value = doc.label || '';
     $('#doc-number').value = doc.document_number || '';
     $('#doc-country').value = doc.issuing_country || '';
-    $('#doc-issue').value = doc.issue_date || '';
-    $('#doc-expiry').value = doc.expiry_date;
+    dateFields['doc-issue'].set(doc.issue_date, doc.issue_hijri);
+    dateFields['doc-expiry'].set(doc.expiry_date, doc.expiry_hijri);
     $('#doc-notes').value = doc.notes || '';
+  } else {
+    dateFields['doc-issue'].reset();
+    dateFields['doc-expiry'].reset();
   }
   docModal.classList.remove('hidden');
 }
@@ -185,12 +258,20 @@ $('#doc-form').addEventListener('submit', async (e) => {
   fd.append('label', $('#doc-label').value);
   fd.append('document_number', $('#doc-number').value);
   fd.append('issuing_country', $('#doc-country').value);
-  fd.append('issue_date', $('#doc-issue').value);
-  fd.append('expiry_date', $('#doc-expiry').value);
+  fd.append('issue_date', dateFields['doc-issue'].value);
+  fd.append('issue_hijri', dateFields['doc-issue'].hijri);
+  fd.append('expiry_date', dateFields['doc-expiry'].value);
+  fd.append('expiry_hijri', dateFields['doc-expiry'].hijri);
   fd.append('notes', $('#doc-notes').value);
   const file = $('#doc-file').files[0];
   if (file) fd.append('file', file);
 
+  if (!dateFields['doc-expiry'].value) {
+    const el = $('#doc-error');
+    el.textContent = 'A valid expiry date is required.';
+    el.classList.remove('hidden');
+    return;
+  }
   const btn = $('#doc-save');
   btn.disabled = true;
   try {
