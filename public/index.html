@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Expiry Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛂</text></svg>" />
+</head>
+<body>
+  <!-- Login screen -->
+  <div id="login-screen" class="login-screen hidden">
+    <form id="login-form" class="login-card">
+      <div class="login-logo">🛂</div>
+      <h1>Document Expiry Tracker</h1>
+      <p class="muted">Enter your password to continue</p>
+      <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
+      <button type="submit" class="btn btn-primary">Unlock</button>
+      <p id="login-error" class="error hidden"></p>
+    </form>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand"><span>🛂</span> Document Expiry Tracker</div>
+      <nav>
+        <button id="nav-add" class="btn btn-primary">+ Add document</button>
+        <button id="nav-settings" class="btn btn-ghost">Settings</button>
+        <button id="nav-logout" class="btn btn-ghost">Log out</button>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="stats" id="stats"></section>
+
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Search by person, document, country…" />
+        <select id="filter-status">
+          <option value="">All statuses</option>
+          <option value="expired">Expired</option>
+          <option value="expiring">Expiring soon</option>
+          <option value="ok">Valid</option>
+        </select>
+        <select id="filter-person"><option value="">All people</option></select>
+      </div>
+
+      <section id="documents" class="doc-list"></section>
+      <p id="empty" class="empty hidden">No documents yet. Click “+ Add document” to start tracking.</p>
+    </main>
+  </div>
+
+  <!-- Document modal -->
+  <div id="doc-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="doc-modal-title">Add document</h2>
+        <button class="icon-btn" data-close>✕</button>
+      </div>
+      <form id="doc-form" class="modal-body">
+        <input type="hidden" id="doc-id" />
+        <div class="grid">
+          <label>Person*
+            <select id="doc-person" required></select>
+          </label>
+          <label>Document type*
+            <input list="doc-types" id="doc-type" placeholder="Visa, Passport, Residence permit…" required />
+            <datalist id="doc-types">
+              <option>Passport</option><option>Visa</option><option>Residence Permit</option>
+              <option>National ID</option><option>Driver's License</option><option>Insurance</option>
+              <option>Work Permit</option><option>Travel Document</option>
+            </datalist>
+          </label>
+          <label>Label / description
+            <input id="doc-label" placeholder="e.g. US B1/B2, UK Family Visa" />
+          </label>
+          <label>Document number
+            <input id="doc-number" placeholder="Optional" />
+          </label>
+          <label>Issuing country
+            <input id="doc-country" placeholder="Optional" />
+          </label>
+          <label>Issue date
+            <input type="date" id="doc-issue" />
+          </label>
+          <label>Expiry date*
+            <input type="date" id="doc-expiry" required />
+          </label>
+          <label class="full">Notes
+            <textarea id="doc-notes" rows="2" placeholder="Optional"></textarea>
+          </label>
+          <label class="full">Scan / photo of the document (PDF or image)
+            <input type="file" id="doc-file" accept=".pdf,image/*" />
+            <span id="current-file" class="muted small"></span>
+          </label>
+        </div>
+        <p id="doc-error" class="error hidden"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="doc-save">Save document</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Settings</h2>
+        <button class="icon-btn" data-close>✕</button>
+      </div>
+      <form id="settings-form" class="modal-body">
+        <label>Send reminders to (comma-separated emails)
+          <input id="set-email" placeholder="you@example.com, partner@example.com" />
+        </label>
+        <div class="grid">
+          <label>First reminder (days before expiry)
+            <input type="number" id="set-lead" min="1" />
+          </label>
+          <label>Repeat every (days)
+            <input type="number" id="set-interval" min="1" />
+          </label>
+        </div>
+        <div id="email-status" class="banner"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-test">Send test email</button>
+          <button type="button" class="btn btn-ghost" id="btn-preview">Preview due reminders</button>
+          <button type="submit" class="btn btn-primary">Save settings</button>
+        </div>
+        <p id="settings-msg" class="muted small"></p>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
