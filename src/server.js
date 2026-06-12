@@ -210,6 +210,7 @@ app.get('/api/settings', (req, res) => {
     source_name: sourceName(),
     source_folder: folderLabel(),
     extraction_configured: isExtractionConfigured(),
+    ai_cost_total: db.prepare('SELECT COALESCE(SUM(ai_cost), 0) AS t FROM documents').get().t,
   });
 });
 

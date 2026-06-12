@@ -87,12 +87,12 @@ function insertPending(file, filename, fields, confidence) {
        (person_id, doc_type, label, document_number, issuing_country,
         issue_date, issue_hijri, expiry_date, expiry_hijri, notes,
         file_path, file_name, source, review_status, source_file_id, source_rev, source_ref,
-        extracted_name, ai_confidence)
+        extracted_name, ai_confidence, ai_cost)
      VALUES
        (@person_id, @doc_type, @label, @document_number, @issuing_country,
         @issue_date, @issue_hijri, @expiry_date, @expiry_hijri, @notes,
         @file_path, @file_name, 'drive', 'pending', @source_file_id, @source_rev, @source_ref,
-        @extracted_name, @ai_confidence)`
+        @extracted_name, @ai_confidence, @ai_cost)`
   ).run({
     person_id: personId,
     doc_type: fields?.doc_type || 'Document',
@@ -113,6 +113,7 @@ function insertPending(file, filename, fields, confidence) {
     source_ref: file.ref,
     extracted_name: fields?.person_name || null,
     ai_confidence: confidence,
+    ai_cost: fields?.cost || 0,
   });
 }
 
@@ -136,6 +137,7 @@ function updatePending(id, file, filename, fields, confidence) {
        source_ref = @source_ref,
        extracted_name = @extracted_name,
        ai_confidence = @ai_confidence,
+       ai_cost = ai_cost + @ai_cost,
        last_reminded_at = NULL,
        reminder_count = 0,
        updated_at = datetime('now')
@@ -158,5 +160,6 @@ function updatePending(id, file, filename, fields, confidence) {
     source_ref: file.ref,
     extracted_name: fields?.person_name || null,
     ai_confidence: confidence,
+    ai_cost: fields?.cost || 0,
   });
 }

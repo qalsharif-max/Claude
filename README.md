@@ -142,6 +142,27 @@ node src/run-reminders.js --preview   # show what WOULD be sent, send nothing
 If you'd rather use the system cron instead of the built-in scheduler, point it
 at `npm run remind`.
 
+## Run with Docker (one command)
+
+The simplest way to run the whole thing — web app **and** the daily scheduler
+(cloud sync + reminder emails) — is one container:
+
+```bash
+cp .env.example .env      # fill in APP_PASSWORD, SESSION_SECRET, RESEND_API_KEY, etc.
+docker compose up -d --build
+```
+
+Open **http://localhost:3000**. Your database (`data/`) and uploaded files
+(`uploads/`) are mounted as host folders, so they survive rebuilds — **back those
+two folders up.**
+
+- Using a Google service-account **file**? Uncomment the volume line in
+  `docker-compose.yml` and set `GOOGLE_SERVICE_ACCOUNT_FILE=/secrets/google.json`
+  in `.env`. (Or skip the file and paste `GOOGLE_CLIENT_EMAIL` / `GOOGLE_PRIVATE_KEY`
+  inline — easier with Docker.)
+- Update later with `docker compose up -d --build`; view logs with
+  `docker compose logs -f`.
+
 ## Keeping it running (self-host)
 
 Use a process manager so it restarts on reboot/crash, e.g. with [pm2](https://pm2.keymetrics.io/):

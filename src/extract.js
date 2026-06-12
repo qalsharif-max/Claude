@@ -3,6 +3,23 @@ import { hijriStringToGregorianISO, gregorianToHijriString } from './hijri.js';
 
 const MODEL = process.env.EXTRACT_MODEL || 'claude-opus-4-8';
 
+// USD per 1M tokens. Defaults cover the Opus/Sonnet/Haiku families; unknown
+// models fall back to Opus pricing.
+const PRICING = {
+  'claude-opus-4-8': { in: 5, out: 25 },
+  'claude-opus-4-7': { in: 5, out: 25 },
+  'claude-opus-4-6': { in: 5, out: 25 },
+  'claude-sonnet-4-6': { in: 3, out: 15 },
+  'claude-haiku-4-5': { in: 1, out: 5 },
+};
+
+function costFor(usage) {
+  const price = PRICING[MODEL] || PRICING['claude-opus-4-8'];
+  const inTok = (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
+  const outTok = usage.output_tokens || 0;
+  return (inTok / 1e6) * price.in + (outTok / 1e6) * price.out;
+}
+
 export function isExtractionConfigured() {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
@@ -112,7 +129,9 @@ export async function extractDocument(buffer, filename) {
   if (!textBlock) throw new Error('No structured output returned from the model.');
   const raw = JSON.parse(textBlock.text);
 
-  return normalize(raw);
+  const normalized = normalize(raw);
+  normalized.cost = costFor(response.usage || {});
+  return normalized;
 }
 
 /** Reconcile Hijri/Gregorian: Hijri (if present) is converted deterministically. */

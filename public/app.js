@@ -132,8 +132,9 @@ function cardHtml(d) {
     `Expires ${esc(d.expiry_date)}${hijri ? ` <span class="muted">(${esc(hijri)} هـ)</span>` : ''}`,
     d.source === 'drive' && `<span class="muted">📥 from Drive</span>`,
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const cost = d.ai_cost > 0 ? ` · AI cost: $${Number(d.ai_cost).toFixed(4)}` : '';
   const reviewNote = pending
-    ? `<div class="doc-sub" style="color:var(--warn)">⚠️ Auto-imported${d.ai_confidence ? ` · AI confidence: ${esc(d.ai_confidence)}` : ''}. Check the details${d.extracted_name ? ` (read name: “${esc(d.extracted_name)}”)` : ''}, then confirm.</div>`
+    ? `<div class="doc-sub" style="color:var(--warn)">⚠️ Auto-imported${d.ai_confidence ? ` · AI confidence: ${esc(d.ai_confidence)}` : ''}${cost}. Check the details${d.extracted_name ? ` (read name: “${esc(d.extracted_name)}”)` : ''}, then confirm.</div>`
     : '';
   return `
     <div class="doc-card status-${pending ? 'review' : d.status}">
@@ -332,7 +333,8 @@ $('#nav-settings').addEventListener('click', async () => {
       ? 'AI extraction is on (expiry dates read automatically).'
       : '<strong>AI extraction is off</strong> — synced files import but you fill in their dates. Add <code>ANTHROPIC_API_KEY</code> to enable it.';
     src.className = 'banner';
-    src.innerHTML = `✅ Connected to <strong>${esc(s.source_name)}</strong> · ${esc(s.source_folder)}.<br>${ai}`;
+    const spend = s.ai_cost_total > 0 ? `<br>Total AI extraction cost so far: <strong>$${Number(s.ai_cost_total).toFixed(4)}</strong>.` : '';
+    src.innerHTML = `✅ Connected to <strong>${esc(s.source_name)}</strong> · ${esc(s.source_folder)}.<br>${ai}${spend}`;
   } else {
     src.className = 'banner warn';
     src.innerHTML = '⚠️ No cloud source connected. Configure <strong>Google Drive</strong> (or Dropbox) in your <code>.env</code> to auto-import documents. See the README.';

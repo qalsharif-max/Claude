@@ -74,6 +74,9 @@ if (!docColumns.includes('source')) {
 if (!docColumns.includes('review_status')) {
   db.exec(`ALTER TABLE documents ADD COLUMN review_status TEXT NOT NULL DEFAULT 'confirmed'`);
 }
+if (!docColumns.includes('ai_cost')) {
+  db.exec(`ALTER TABLE documents ADD COLUMN ai_cost REAL NOT NULL DEFAULT 0`);
+}
 
 // --- Seed the family (only on a fresh database) ---
 const FAMILY = [
