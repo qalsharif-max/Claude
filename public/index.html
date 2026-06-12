@@ -26,6 +26,7 @@
       <div class="brand"><span>🛂</span> Document Expiry Tracker</div>
       <nav>
         <button id="nav-add" class="btn btn-primary">+ Add document</button>
+        <button id="nav-sync" class="btn btn-ghost hidden">⟳ Sync Drive</button>
         <button id="nav-settings" class="btn btn-ghost">Settings</button>
         <button id="nav-logout" class="btn btn-ghost">Log out</button>
       </nav>
@@ -38,6 +39,7 @@
         <input type="search" id="search" placeholder="Search by person, document, country…" />
         <select id="filter-status">
           <option value="">All statuses</option>
+          <option value="review">Needs review</option>
           <option value="expired">Expired</option>
           <option value="expiring">Expiring soon</option>
           <option value="ok">Valid</option>
@@ -123,6 +125,13 @@
           </label>
         </div>
         <div id="email-status" class="banner"></div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:18px 0" />
+        <h3 style="font-size:15px;margin:0 0 8px">Cloud sync (Google Drive / Dropbox)</h3>
+        <div id="source-status" class="banner"></div>
+        <div class="modal-actions" style="justify-content:flex-start;margin-bottom:18px">
+          <button type="button" class="btn btn-ghost" id="btn-sync">⟳ Sync now</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:0 0 18px" />
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="btn-test">Send test email</button>
           <button type="button" class="btn btn-ghost" id="btn-preview">Preview due reminders</button>

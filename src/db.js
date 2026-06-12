@@ -56,10 +56,23 @@ db.exec(`
 
 // --- Lightweight migrations for databases created before a column existed ---
 const docColumns = db.prepare('PRAGMA table_info(documents)').all().map((c) => c.name);
-for (const col of ['issue_hijri', 'expiry_hijri']) {
-  if (!docColumns.includes(col)) {
-    db.exec(`ALTER TABLE documents ADD COLUMN ${col} TEXT`);
-  }
+const textCols = [
+  'issue_hijri',
+  'expiry_hijri',
+  'source_file_id',
+  'source_rev',
+  'source_ref',
+  'extracted_name',
+  'ai_confidence',
+];
+for (const col of textCols) {
+  if (!docColumns.includes(col)) db.exec(`ALTER TABLE documents ADD COLUMN ${col} TEXT`);
+}
+if (!docColumns.includes('source')) {
+  db.exec(`ALTER TABLE documents ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`);
+}
+if (!docColumns.includes('review_status')) {
+  db.exec(`ALTER TABLE documents ADD COLUMN review_status TEXT NOT NULL DEFAULT 'confirmed'`);
 }
 
 // --- Seed the family (only on a fresh database) ---
@@ -85,6 +98,24 @@ if (peopleCount === 0) {
 export function getSetting(key, fallback = null) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return row ? row.value : fallback;
+}
+
+/** Find a person by fuzzy name match, or fall back to a shared "Unassigned" owner. */
+export function matchOrUnassignedPerson(name) {
+  const clean = (name || '').trim().toLowerCase();
+  if (clean) {
+    const people = db.prepare('SELECT * FROM people').all();
+    for (const p of people) {
+      const pn = p.name.toLowerCase();
+      if (pn === clean || pn.includes(clean) || clean.includes(pn)) return p.id;
+    }
+  }
+  let unassigned = db.prepare("SELECT id FROM people WHERE name = 'Unassigned'").get();
+  if (!unassigned) {
+    const info = db.prepare('INSERT INTO people (name, role) VALUES (?, ?)').run('Unassigned', 'Review');
+    return info.lastInsertRowid;
+  }
+  return unassigned.id;
 }
 
 export function setSetting(key, value) {

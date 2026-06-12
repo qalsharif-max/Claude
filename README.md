@@ -18,6 +18,9 @@ Omar Alsharif (Son), Lama Alsharif (Daughter), Taliah Alsharif (Daughter).
   (Umm al-Qura) and it's converted to Gregorian automatically; both are shown.
 - 📧 Automatic email reminders via [Resend](https://resend.com): first at 6 months
   out, then monthly until you renew.
+- ☁️ **Auto-import from Google Drive (or Dropbox)** — drop a scan in a folder and the
+  app pulls it in, reads the expiry date with Claude (incl. Hijri), and queues it
+  for a quick review before any reminders fire.
 - ♻️ Uploading a new file or changing the expiry date resets the reminder cycle.
 - 🕘 Built-in daily scheduler — no separate cron needed (but one is supported too).
 
@@ -64,6 +67,57 @@ The Resend API key lives in your **`.env`** file (never committed to git):
 > To reliably send to your own inbox (not just the Resend sandbox), verify your
 > own domain in Resend and set `EMAIL_FROM` to an address on that domain.
 
+## Auto-import from Google Drive (optional)
+
+Instead of uploading each document by hand, point the app at a cloud folder. On
+every daily run (and via the **Sync now** button) it pulls new/changed files,
+reads each one with Claude to extract the expiry date — **including Hijri dates,
+which are converted to Gregorian automatically** — and adds it as a **"Needs
+review"** document. Nothing sends a reminder until you open it, check the details,
+and confirm. A misread date can never silently drive a reminder.
+
+You can use **Google Drive** (recommended) or **Dropbox**. If both are configured,
+Google Drive wins.
+
+### Google Drive setup (service account)
+
+1. In the [Google Cloud Console](https://console.cloud.google.com), create a
+   project and **enable the Google Drive API**.
+2. Create a **Service Account**, then create a **JSON key** for it and download it.
+3. **Share your Drive folder** with the service account's email address
+   (the `client_email` in the JSON), Viewer access is enough.
+4. Copy the folder's **ID** from its URL
+   (`https://drive.google.com/drive/folders/<THIS_PART>`).
+5. In `.env`, set either the path to the JSON file **or** the inline credentials,
+   plus the folder ID:
+   ```
+   GOOGLE_SERVICE_ACCOUNT_FILE=/path/to/service-account.json
+   GOOGLE_DRIVE_FOLDER_ID=your_folder_id
+   # (or, inline instead of the file:)
+   # GOOGLE_CLIENT_EMAIL=...@...iam.gserviceaccount.com
+   # GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   ```
+
+### AI extraction (Claude)
+
+Extraction uses the Anthropic API. Add a key from
+[console.anthropic.com](https://console.anthropic.com):
+```
+ANTHROPIC_API_KEY=sk-ant-...
+EXTRACT_MODEL=claude-opus-4-8
+```
+Without a key, synced files still import — you just fill in their dates manually.
+
+> Claude reads each Hijri expiry date **as printed**; the Hijri→Gregorian
+> conversion is done in code (Umm al-Qura) for accuracy, not by the model.
+
+### Dropbox setup (alternative)
+
+Create a [scoped app](https://www.dropbox.com/developers/apps) with
+`files.metadata.read` + `files.content.read`, generate a refresh token
+(`token_access_type=offline`), and set `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`,
+`DROPBOX_REFRESH_TOKEN`, and `DROPBOX_FOLDER` in `.env`.
+
 ## How the reminders work
 
 - Every day at `REMINDER_CRON_HOUR:REMINDER_CRON_MINUTE` (default 09:00 server
@@ -106,4 +160,5 @@ pm2 save && pm2 startup
 
 ## Tech
 
-Node.js + Express · SQLite (better-sqlite3) · node-cron · Resend · vanilla JS frontend.
+Node.js + Express · SQLite (better-sqlite3) · node-cron · Resend ·
+Google Drive / Dropbox sync · Claude (Anthropic) vision extraction · vanilla JS frontend.

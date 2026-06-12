@@ -31,6 +31,10 @@ async function showApp() {
   $('#app').classList.remove('hidden');
   await loadPeople();
   await loadDocuments();
+  try {
+    const s = await api('/api/settings');
+    $('#nav-sync').classList.toggle('hidden', !s.source_configured);
+  } catch (e) { /* ignore */ }
 }
 
 $('#login-form').addEventListener('submit', async (e) => {
@@ -79,7 +83,9 @@ function render() {
   const fp = $('#filter-person').value;
 
   let list = documents.filter((d) => {
-    if (fs && d.status !== fs) return false;
+    if (fs === 'review') {
+      if (d.review_status !== 'pending') return false;
+    } else if (fs && d.status !== fs) return false;
     if (fp && String(d.person_id) !== fp) return false;
     if (q) {
       const hay = `${d.person_name} ${d.person_role} ${d.doc_type} ${d.label || ''} ${d.issuing_country || ''} ${d.document_number || ''}`.toLowerCase();
@@ -107,31 +113,39 @@ function renderStats() {
   const expired = documents.filter((d) => d.status === 'expired').length;
   const expiring = documents.filter((d) => d.status === 'expiring').length;
   const ok = documents.filter((d) => d.status === 'ok').length;
+  const pending = documents.filter((d) => d.review_status === 'pending').length;
   $('#stats').innerHTML = `
     <div class="stat"><div class="num">${total}</div><div class="lbl">Total documents</div></div>
     <div class="stat expired"><div class="num">${expired}</div><div class="lbl">Expired</div></div>
     <div class="stat expiring"><div class="num">${expiring}</div><div class="lbl">Expiring soon</div></div>
-    <div class="stat ok"><div class="num">${ok}</div><div class="lbl">Valid</div></div>`;
+    <div class="stat ok"><div class="num">${ok}</div><div class="lbl">Valid</div></div>
+    ${pending ? `<div class="stat review"><div class="num">${pending}</div><div class="lbl">Needs review</div></div>` : ''}`;
 }
 
 function cardHtml(d) {
+  const pending = d.review_status === 'pending';
   const label = d.label ? `${esc(d.doc_type)} — ${esc(d.label)}` : esc(d.doc_type);
   const hijri = d.expiry_hijri || Hijri.gregorianToHijriString(d.expiry_date);
   const sub = [
     d.issuing_country && `🌍 ${esc(d.issuing_country)}`,
     d.document_number && `#${esc(d.document_number)}`,
     `Expires ${esc(d.expiry_date)}${hijri ? ` <span class="muted">(${esc(hijri)} هـ)</span>` : ''}`,
+    d.source === 'drive' && `<span class="muted">📥 from Drive</span>`,
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const reviewNote = pending
+    ? `<div class="doc-sub" style="color:var(--warn)">⚠️ Auto-imported${d.ai_confidence ? ` · AI confidence: ${esc(d.ai_confidence)}` : ''}. Check the details${d.extracted_name ? ` (read name: “${esc(d.extracted_name)}”)` : ''}, then confirm.</div>`
+    : '';
   return `
-    <div class="doc-card status-${d.status}">
+    <div class="doc-card status-${pending ? 'review' : d.status}">
       <div class="doc-main">
         <div class="doc-title">${label}</div>
         <div class="doc-sub">${sub}</div>
+        ${reviewNote}
       </div>
       <div class="doc-right">
-        <span class="badge ${d.status}">${statusText(d)}</span>
+        <span class="badge ${pending ? 'review' : d.status}">${pending ? 'Needs review' : statusText(d)}</span>
         ${d.file_path ? `<a class="link-btn" href="/api/documents/${d.id}/file" target="_blank">View file</a>` : ''}
-        <button class="link-btn" data-edit="${d.id}">Edit / Renew</button>
+        <button class="link-btn" data-edit="${d.id}">${pending ? 'Review & confirm' : 'Edit / Renew'}</button>
         <button class="link-btn danger" data-del="${d.id}">Delete</button>
       </div>
     </div>`;
@@ -311,9 +325,44 @@ $('#nav-settings').addEventListener('click', async () => {
     banner.className = 'banner warn';
     banner.innerHTML = '⚠️ No Resend API key set — running in <strong>log-only</strong> mode. Add <code>RESEND_API_KEY</code> to your <code>.env</code> to send real emails.';
   }
+
+  const src = $('#source-status');
+  if (s.source_configured) {
+    const ai = s.extraction_configured
+      ? 'AI extraction is on (expiry dates read automatically).'
+      : '<strong>AI extraction is off</strong> — synced files import but you fill in their dates. Add <code>ANTHROPIC_API_KEY</code> to enable it.';
+    src.className = 'banner';
+    src.innerHTML = `✅ Connected to <strong>${esc(s.source_name)}</strong> · ${esc(s.source_folder)}.<br>${ai}`;
+  } else {
+    src.className = 'banner warn';
+    src.innerHTML = '⚠️ No cloud source connected. Configure <strong>Google Drive</strong> (or Dropbox) in your <code>.env</code> to auto-import documents. See the README.';
+  }
   $('#settings-msg').textContent = '';
   setModal.classList.remove('hidden');
 });
+
+async function runSync(btn) {
+  const original = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Syncing…'; }
+  $('#settings-msg') && ($('#settings-msg').textContent = 'Syncing… (this can take a moment while documents are read)');
+  try {
+    const r = await api('/api/sync', { method: 'POST' });
+    await loadDocuments();
+    if (!r.configured) {
+      toast('No cloud source configured — see Settings/README', true);
+    } else {
+      const msg = `Synced ${r.source || ''}: ${r.added} new, ${r.updated} updated${r.errors.length ? `, ${r.errors.length} error(s)` : ''}`;
+      toast(msg);
+      if ($('#settings-msg')) $('#settings-msg').textContent = msg + (r.errors.length ? ` — ${r.errors[0]}` : '');
+    }
+  } catch (e) {
+    toast('Sync failed: ' + e.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
+$('#nav-sync').addEventListener('click', () => runSync($('#nav-sync')));
+$('#btn-sync').addEventListener('click', () => runSync($('#btn-sync')));
 
 $('#settings-form').addEventListener('submit', async (e) => {
   e.preventDefault();

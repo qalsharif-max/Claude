@@ -12,6 +12,9 @@ import db, { getSetting, setSetting } from './db.js';
 import { checkPassword, requireAuth } from './auth.js';
 import { sendEmail, getRecipients, isEmailConfigured } from './email.js';
 import { runReminders, daysUntil, statusFor, leadDays, intervalDays } from './reminders.js';
+import { syncSource } from './sync.js';
+import { isSourceConfigured, sourceName, folderLabel } from './source.js';
+import { isExtractionConfigured } from './extract.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -171,6 +174,7 @@ app.put('/api/documents/:id', upload.single('file'), (req, res) => {
        issuing_country=@issuing_country, issue_date=@issue_date, issue_hijri=@issue_hijri,
        expiry_date=@expiry_date, expiry_hijri=@expiry_hijri, notes=@notes,
        file_path=@file_path, file_name=@file_name,
+       review_status='confirmed',
        updated_at=datetime('now')
        ${renewed ? ', last_reminded_at=NULL, reminder_count=0' : ''}
      WHERE id=@id`
@@ -202,7 +206,17 @@ app.get('/api/settings', (req, res) => {
     interval_days: intervalDays(),
     email_configured: isEmailConfigured(),
     recipients: getRecipients(),
+    source_configured: isSourceConfigured(),
+    source_name: sourceName(),
+    source_folder: folderLabel(),
+    extraction_configured: isExtractionConfigured(),
   });
+});
+
+// --- Cloud source sync (Google Drive / Dropbox) ---
+app.post('/api/sync', async (req, res) => {
+  const result = await syncSource();
+  res.json(result);
 });
 
 app.put('/api/settings', (req, res) => {
@@ -238,7 +252,15 @@ app.use(express.static(path.join(ROOT, 'public')));
 const hour = Number(process.env.REMINDER_CRON_HOUR ?? 9);
 const minute = Number(process.env.REMINDER_CRON_MINUTE ?? 0);
 cron.schedule(`${minute} ${hour} * * *`, async () => {
-  console.log(`[scheduler] Running daily reminder check at ${new Date().toISOString()}`);
+  console.log(`[scheduler] Running daily check at ${new Date().toISOString()}`);
+  if (isSourceConfigured()) {
+    try {
+      const s = await syncSource();
+      console.log(`[scheduler] ${s.source} sync: +${s.added} added, ${s.updated} updated, ${s.errors.length} error(s)`);
+    } catch (err) {
+      console.error('[scheduler] Source sync failed:', err);
+    }
+  }
   const result = await runReminders();
   if (result.due.length) {
     console.log(`[scheduler] ${result.due.length} document(s) due. Sent: ${result.sent} (${result.mode || result.error})`);
@@ -251,5 +273,6 @@ const PORT = Number(process.env.PORT || 3000);
 app.listen(PORT, () => {
   console.log(`Document Expiry Tracker running at http://localhost:${PORT}`);
   console.log(`Email mode: ${isEmailConfigured() ? 'Resend (live)' : 'log-only (set RESEND_API_KEY to send real emails)'}`);
+  console.log(`Cloud sync: ${isSourceConfigured() ? sourceName() : 'off'} · AI extraction: ${isExtractionConfigured() ? 'configured' : 'off'}`);
   console.log(`Daily reminder check scheduled for ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} server time.`);
 });

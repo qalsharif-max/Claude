@@ -56,6 +56,7 @@ export async function runReminders({ dryRun = false } = {}) {
     .prepare(
       `SELECT d.*, p.name AS person_name, p.role AS person_role
          FROM documents d JOIN people p ON p.id = d.person_id
+        WHERE d.review_status IS NULL OR d.review_status = 'confirmed'
         ORDER BY d.expiry_date ASC`
     )
     .all();
