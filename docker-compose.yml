@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    container_name: document-expiry-tracker
+    ports:
+      - "3000:3000"
+    # Reads your secrets/config from .env (copy .env.example -> .env first).
+    env_file:
+      - .env
+    volumes:
+      # Keep the database and uploaded files on the host so they survive
+      # container rebuilds. Back these two folders up — that's all your data.
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      # If you use a Google service-account JSON file, mount it read-only and
+      # point GOOGLE_SERVICE_ACCOUNT_FILE at this path in your .env:
+      #   GOOGLE_SERVICE_ACCOUNT_FILE=/secrets/google.json
+      # - ./google-service-account.json:/secrets/google.json:ro
+    restart: unless-stopped
